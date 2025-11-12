@@ -2,13 +2,14 @@
   "name": "top-k-artists-in-archive",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx src/main.ts",
     "watch": "tsx watch src/main.ts",
-    "check": "tsc --noEmit",
     "build": "tsc",
     "start": "node dist/main.js",
+    "check": "tsc --noEmit",
     "generate-data": "tsx src/utils/generate-data.ts"
   },
   "keywords": [],
@@ -19,5 +20,8 @@
     "@types/node": "^24.10.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
   }
 }

@@ -1,3 +1,5 @@
+import { EASY, HARD, MEDIUM } from "./const.js";
+
 export interface WorkerMessage {
   data?: ArtistAppearance[];
   error?: string;
@@ -12,4 +14,9 @@ export interface ArtistAppearance {
   artist: ArtistName;
   appearances: ArtistAppearances;
 }
-
+export type Difficulty = typeof EASY | typeof MEDIUM | typeof HARD;
+export type Level = {
+  name: Difficulty;
+  range: [number, number];
+  files: number;
+};

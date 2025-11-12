@@ -8,7 +8,8 @@ import type {
   ArtistAppearanceMap,
   WorkerMessage,
 } from "./utils/types.js";
-import { TOP_K_ARTISTS } from "./utils/const.js";
+import { HARD, TOP_K_ARTISTS } from "./utils/const.js";
+import { selectDifficulty } from "./utils/select-difficulty.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,11 +18,13 @@ const isProduction = process.env.NODE_ENV === "production";
 const workerFile = isProduction ? "./worker.js" : "./worker-dev.mjs";
 const workerUrl = new URL(workerFile, import.meta.url);
 const workerExecArgv = isProduction ? undefined : [...process.execArgv];
-const dataDir = join(__dirname, "..", "data");
+console.time("⏱️  Total processing time");
 
-async function main(pathToData: string): Promise<ArtistAppearance[]> {
-  const files = readdirSync(pathToData).filter((file) =>
-    file.endsWith(".json.gz")
+async function main(): Promise<ArtistAppearance[]> {
+  const difficulty = isProduction ? await selectDifficulty() : HARD;
+  const dataDir = join(__dirname, "..", "data", difficulty);
+  const files = readdirSync(dataDir).filter((file) =>
+    file.endsWith(".jsonl.gz")
   );
 
   const artistAppearancesInFile: ArtistAppearance[][] = await Promise.all(
@@ -29,7 +32,7 @@ async function main(pathToData: string): Promise<ArtistAppearance[]> {
       async (file) =>
         new Promise<ArtistAppearance[]>((resolve, reject) => {
           const worker = new Worker(workerUrl, {
-            workerData: join(pathToData, file),
+            workerData: join(dataDir, file),
             ...(workerExecArgv ? { execArgv: workerExecArgv } : {}),
           });
           worker.on("message", (message: WorkerMessage) => {
@@ -59,13 +62,18 @@ async function main(pathToData: string): Promise<ArtistAppearance[]> {
     .slice(0, TOP_K_ARTISTS);
 }
 
-main(dataDir)
-  .then((result) =>
+main()
+  .then((result) => {
     console.log(
       `Here is the \x1b[31mTOP ${TOP_K_ARTISTS}\x1b[0m artists:\n\n${result
-        .map(({ artist, appearances }, index) => 
-            `${index + 1}. "${artist}" with \x1b[32m\x1b[1m${appearances}\x1b[0m appearances`)
+        .map(
+          ({ artist, appearances }, index) =>
+            `${
+              index + 1
+            }. "${artist}" with \x1b[32m\x1b[1m${appearances}\x1b[0m appearances`
+        )
         .join("\n")}\n`
-    )
-  )
+    );
+    console.timeEnd("⏱️  Total processing time");
+  })
   .catch((err) => console.error(err));

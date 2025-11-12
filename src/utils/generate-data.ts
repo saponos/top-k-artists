@@ -1,91 +1,72 @@
-import fs from "fs";
-import zlib from "zlib";
+import fs from "node:fs";
+import fsp from "node:fs/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { createGzip } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import type { Level } from "./types.js";
+import { EASY, MEDIUM, HARD, ARTISTS } from "./const.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const dataRoot = join(__dirname, "..", "..", "data");
 
-const dataDir = join(__dirname, "../..", "data");
-const artists = [
-  "Radiohead",
-  "Arctic Monkeys",
-  "Muse",
-  "The Killers",
-  "Nirvana",
-  "Foo Fighters",
-  "Linkin Park",
-  "Placebo",
-  "The Smashing Pumpkins",
-  "Nine Inch Nails",
-  "Coldplay",
-  "Imagine Dragons",
-  "Paramore",
-  "Red Hot Chili Peppers",
-  "The Strokes",
-  "Queens of the Stone Age",
-  "The White Stripes",
-  "Interpol",
-  "The 1975",
-  "Snow Patrol",
-  "Kasabian",
-  "The Black Keys",
-  "Florence + The Machine",
-  "Yeah Yeah Yeahs",
-  "Editors",
-  "The National",
-  "Modest Mouse",
-  "The Verve",
-  "Blur",
-  "Oasis",
-  "Green Day",
-  "Beck",
-  "The Cranberries",
-  "Evanescence",
-  "The Kooks",
-  "Franz Ferdinand",
-  "Arcade Fire",
-  "The Goo Goo Dolls",
-  "Smashing Pumpkins",
-  "The Libertines",
-  "Kings of Leon",
-  "Panic! At The Disco",
-  "Thirty Seconds to Mars",
-  "Death Cab for Cutie",
-  "MGMT",
-  "Silversun Pickups",
-  "Biffy Clyro",
-  "R.E.M.",
-  "No Doubt",
-  "The Offspring",
-  "The Cure",
+const ARTISTS_LENGTH = ARTISTS.length;
+
+const randInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const pickArtist = () => ARTISTS[Math.floor(Math.random() * ARTISTS_LENGTH)];
+
+function linesGenerator(total: number): Readable {
+  return Readable.from(
+    (async function* () {
+      for (let i = 0; i < total; i++) {
+        yield JSON.stringify({ artist: pickArtist() }) + "\n";
+      }
+    })()
+  );
+}
+
+async function generateGzipJsonl(outPath: string, total: number): Promise<void> {
+  await fsp.mkdir(join(outPath, ".."), { recursive: true });
+  const src = linesGenerator(total);
+  const gz = createGzip();
+  const dest = fs.createWriteStream(outPath);
+  await pipeline(src, gz, dest);
+}
+
+const levels: Level[] = [
+  { name: EASY, range: [20, 100], files: 3 },
+  { name: MEDIUM, range: [50_000, 100_000], files: 3 },
+  { name: HARD, range: [1_000_000, 2_000_000], files: 3 },
 ];
-const artistsLength = artists.length;
 
-function randomArtist() {
-  return artists[Math.floor(Math.random() * artistsLength)];
+async function run(): Promise<void> {
+  await fsp.mkdir(dataRoot, { recursive: true });
+
+  for (const {
+    name,
+    range: [min, max],
+    files,
+  } of levels) {
+    const dir = join(dataRoot, name);
+    await fsp.mkdir(dir, { recursive: true });
+
+    for (let i = 1; i <= files; i++) {
+      const count = randInt(min, max);
+      const filename = `${name}-${i}.jsonl.gz`;
+      const file = join(dir, filename);
+      await generateGzipJsonl(file, count);
+      console.log(`✅ Generated ${filename} with ${count} lines`);
+    }
+  }
+
+  console.log("✅ All datasets generated under:", dataRoot);
 }
 
-async function generateFile(filename: string, lines: number) {
-  const filePath = join(dataDir, filename);
-  const gz = zlib.createGzip();
-  const out = fs.createWriteStream(filePath);
-  gz.pipe(out);
-
-  for (let i = 0; i < lines; i++) {
-    gz.write(JSON.stringify({ artist: randomArtist() }) + "\n");
-  } 
-
-  gz.end(() => console.log(`Generated ${filename} with ${lines} lines`));
-
-  return new Promise((resolve, reject) => {
-    out.on('finish', () => resolve(true));
-    out.on('error', (error) => reject(error));
-  });
-}
-
-fs.mkdirSync(dataDir, { recursive: true });
-
-await generateFile("simple.json.gz", 20);
-await generateFile("medium.json.gz", 50_000);
-await generateFile("hard.json.gz", 1_000_000);
+run().catch((e) => {
+  console.error("Generation failed:", e);
+  process.exit(1);
+});

@@ -1,8 +1,12 @@
 import fs from "fs";
-import path from "path";
 import zlib from "zlib";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const dataDir = path.join(__dirname, "../..", "data");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const dataDir = join(__dirname, "../..", "data");
 const artists = [
   "Radiohead",
   "Arctic Monkeys",
@@ -62,21 +66,26 @@ function randomArtist() {
   return artists[Math.floor(Math.random() * artistsLength)];
 }
 
-function generateFile(filename: string, lines: number) {
-  const filePath = path.join(dataDir, filename);
+async function generateFile(filename: string, lines: number) {
+  const filePath = join(dataDir, filename);
   const gz = zlib.createGzip();
   const out = fs.createWriteStream(filePath);
   gz.pipe(out);
 
   for (let i = 0; i < lines; i++) {
-    gz.write(JSON.stringify({ artist: randomArtist() }) + "\n", "utf-8");
+    gz.write(JSON.stringify({ artist: randomArtist() }) + "\n");
   } 
 
   gz.end(() => console.log(`Generated ${filename} with ${lines} lines`));
+
+  return new Promise((resolve, reject) => {
+    out.on('finish', () => resolve(true));
+    out.on('error', (error) => reject(error));
+  });
 }
 
 fs.mkdirSync(dataDir, { recursive: true });
 
-generateFile("simple.json.gz", 20);
-generateFile("medium.json.gz", 50_000);
-generateFile("hard.json.gz", 1_000_000);
+await generateFile("simple.json.gz", 20);
+await generateFile("medium.json.gz", 50_000);
+await generateFile("hard.json.gz", 1_000_000);

@@ -1,0 +1,1 @@
+export const TOP_K_ARTISTS = Number(process.env.TOP_K_ARTISTS ?? 10);

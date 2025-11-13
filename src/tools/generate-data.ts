@@ -5,8 +5,8 @@ import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import type { Level } from "./types.js";
-import { EASY, MEDIUM, HARD, ARTISTS } from "./const.js";
+import type { Level } from "../lib/types.js";
+import { EASY, MEDIUM, HARD, ARTISTS } from "../lib/const.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,7 +29,10 @@ function linesGenerator(total: number): Readable {
   );
 }
 
-async function generateGzipJsonl(outPath: string, total: number): Promise<void> {
+async function generateGzipJsonl(
+  outPath: string,
+  total: number
+): Promise<void> {
   await fsp.mkdir(join(outPath, ".."), { recursive: true });
   const src = linesGenerator(total);
   const gz = createGzip();

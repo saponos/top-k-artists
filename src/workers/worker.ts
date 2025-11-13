@@ -1,5 +1,5 @@
 import { parentPort, workerData } from "node:worker_threads";
-import { countArtistAppearancesInFile } from "./utils/count-artist-appearances.js";
+import { countArtistAppearancesInFile } from "../services/count-artist-appearances-in-file.js";
 
 try {
   for await (const chunk of countArtistAppearancesInFile(workerData as string)) {

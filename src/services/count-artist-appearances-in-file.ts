@@ -1,11 +1,9 @@
 import { createReadStream, ReadStream } from "node:fs";
 import { Gunzip } from "node:zlib";
-import type {
-  Artist,
-  ArtistAppearanceMap,
-} from "./types.js";
+import type { Artist } from "../lib/interfaces.js";
 import zlib from "zlib";
 import readline from "readline";
+import { ArtistAppearanceMap } from "../lib/types.js";
 
 export async function* countArtistAppearancesInFile(
   pathToFile: string
@@ -23,7 +21,10 @@ export async function* countArtistAppearancesInFile(
   for await (const line of rl) {
     try {
       const { artist } = JSON.parse(line) as Artist;
-      rawArtistAppearances.set(artist, (rawArtistAppearances.get(artist) || 0) + 1);
+      rawArtistAppearances.set(
+        artist,
+        (rawArtistAppearances.get(artist) || 0) + 1
+      );
 
       if (++count > 100_000) {
         yield rawArtistAppearances;
@@ -38,5 +39,4 @@ export async function* countArtistAppearancesInFile(
   if (rawArtistAppearances.size > 0) {
     yield rawArtistAppearances;
   }
-
 }

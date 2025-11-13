@@ -10,6 +10,7 @@ import type {
 } from "./utils/types.js";
 import { HARD, TOP_K_ARTISTS } from "./utils/const.js";
 import { selectDifficulty } from "./utils/select-difficulty.js";
+import { MinHeap } from "./utils/min-heap.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,6 +27,10 @@ async function main(): Promise<ArtistAppearance[]> {
     file.endsWith(".jsonl.gz")
   );
   const artistAppearances: ArtistAppearanceMap = new Map();
+  const heap = new MinHeap<ArtistAppearance>(
+    TOP_K_ARTISTS,
+    (a: ArtistAppearance, b: ArtistAppearance) => a.appearances - b.appearances
+  );
 
   await Promise.all(
     files.map(
@@ -40,10 +45,12 @@ async function main(): Promise<ArtistAppearance[]> {
             const chunk: ArtistAppearanceMap = message.data ?? new Map();
 
             for (const [artist, appearances] of chunk) {
+              const total = (artistAppearances.get(artist) || 0) + appearances;
               artistAppearances.set(
                 artist,
-                (artistAppearances.get(artist) || 0) + appearances
+                total
               );
+              heap.push({ artist, appearances: total });
             }
           });
           worker.on("error", reject);
@@ -56,10 +63,9 @@ async function main(): Promise<ArtistAppearance[]> {
     )
   );
 
-  return Array.from(artistAppearances.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, TOP_K_ARTISTS)
-    .map(([artist, appearances]) => ({ artist, appearances }));
+  return heap
+    .toArray()
+    .sort((a, b) => b.appearances - a.appearances)
 }
 const start = Date.now();
 main()

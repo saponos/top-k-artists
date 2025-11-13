@@ -6,7 +6,7 @@ export interface WorkerMessage {
 }
 export type ArtistName = string;
 export type ArtistAppearances = number;
-export type ArtistAppearanceMap = Map<string, number>;
+export type ArtistAppearanceMap = Map<ArtistName, ArtistAppearances>;
 export interface Artist {
   artist: ArtistName;
 }
